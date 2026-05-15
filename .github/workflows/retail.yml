@@ -1,4 +1,4 @@
-name: Databricks Bundle Deployment
+name: Databricks 3 Environment CI/CD
 
 on:
   push:
@@ -7,14 +7,33 @@ on:
       - qa
       - main
 
+permissions:
+  contents: read
+
 jobs:
 
-  deploy-dev:
+  detect-env:
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ steps.setenv.outputs.env }}
 
-    if: github.ref == 'refs/heads/dev'
+    steps:
+      - name: Set Environment
+        id: setenv
+        run: |
+          if [[ "${GITHUB_REF}" == "refs/heads/dev" ]]; then
+            echo "env=dev" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF}" == "refs/heads/qa" ]]; then
+            echo "env=qa" >> $GITHUB_OUTPUT
+          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
+            echo "env=prod" >> $GITHUB_OUTPUT
+          fi
+
+  deploy-dev:
+    needs: detect-env
+    if: needs.detect-env.outputs.env == 'dev'
 
     runs-on: ubuntu-latest
-
     environment: dev
 
     steps:
@@ -32,11 +51,10 @@ jobs:
           DATABRICKS_TOKEN: ${{ secrets.DEV_DATABRICKS_TOKEN }}
 
   deploy-qa:
-
-    if: github.ref == 'refs/heads/qa'
+    needs: [detect-env, deploy-dev]
+    if: needs.detect-env.outputs.env == 'qa'
 
     runs-on: ubuntu-latest
-
     environment: qa
 
     steps:
@@ -54,11 +72,10 @@ jobs:
           DATABRICKS_TOKEN: ${{ secrets.QA_DATABRICKS_TOKEN }}
 
   deploy-prod:
-
-    if: github.ref == 'refs/heads/main'
+    needs: [detect-env, deploy-qa]
+    if: needs.detect-env.outputs.env == 'prod'
 
     runs-on: ubuntu-latest
-
     environment: prod
 
     steps:
