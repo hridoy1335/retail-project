@@ -1,0 +1,80 @@
+name: Databricks Bundle Deployment
+
+on:
+  push:
+    branches:
+      - dev
+      - qa
+      - main
+
+jobs:
+
+  deploy-dev:
+    if: github.ref == 'refs/heads/dev'
+
+    runs-on: ubuntu-latest
+
+    environment: dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Validate Bundle
+        working-directory: bundles/jobs
+        run: databricks bundle validate -t dev
+        env:
+          DATABRICKS_CONFIG_PROFILE: dev
+
+      - name: Deploy DEV
+        working-directory: bundles/jobs
+        run: databricks bundle deploy -t dev
+        env:
+          DATABRICKS_CONFIG_PROFILE: dev
+
+  deploy-qa:
+    if: github.ref == 'refs/heads/qa'
+
+    runs-on: ubuntu-latest
+
+    environment: qa
+
+    needs: deploy-dev
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy QA
+        working-directory: bundles/jobs
+        run: databricks bundle deploy -t qa
+        env:
+          DATABRICKS_CONFIG_PROFILE: qa
+
+  deploy-prod:
+    if: github.ref == 'refs/heads/main'
+
+    runs-on: ubuntu-latest
+
+    environment: prod
+
+    needs: deploy-qa
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy PROD
+        working-directory: bundles/jobs
+        run: databricks bundle deploy -t prod
+        env:
+          DATABRICKS_CONFIG_PROFILE: prod
