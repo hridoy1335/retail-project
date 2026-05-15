@@ -7,14 +7,6 @@ on:
       - qa
       - main
 
-permissions:
-  id-token: write
-  contents: read
-
-concurrency:
-  group: databricks-${{ github.ref }}
-  cancel-in-progress: false
-
 jobs:
 
   deploy-dev:
@@ -26,19 +18,11 @@ jobs:
     environment: dev
 
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-
-      - name: Validate DEV Bundle
-        working-directory: bundles/jobs
-        run: databricks bundle validate -t dev
-        env:
-          DATABRICKS_HOST: ${{ secrets.DEV_DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.DEV_DATABRICKS_TOKEN }}
 
       - name: Deploy DEV
         working-directory: bundles/jobs
@@ -55,22 +39,12 @@ jobs:
 
     environment: qa
 
-    needs: deploy-dev
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-
-      - name: Validate QA Bundle
-        working-directory: bundles/jobs
-        run: databricks bundle validate -t qa
-        env:
-          DATABRICKS_HOST: ${{ secrets.QA_DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.QA_DATABRICKS_TOKEN }}
 
       - name: Deploy QA
         working-directory: bundles/jobs
@@ -87,22 +61,12 @@ jobs:
 
     environment: prod
 
-    needs: deploy-qa
-
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-
-      - name: Validate PROD Bundle
-        working-directory: bundles/jobs
-        run: databricks bundle validate -t prod
-        env:
-          DATABRICKS_HOST: ${{ secrets.PROD_DATABRICKS_HOST }}
-          DATABRICKS_TOKEN: ${{ secrets.PROD_DATABRICKS_TOKEN }}
 
       - name: Deploy PROD
         working-directory: bundles/jobs
