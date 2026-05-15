@@ -7,9 +7,18 @@ on:
       - qa
       - main
 
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: databricks-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
 
   deploy-dev:
+
     if: github.ref == 'refs/heads/dev'
 
     runs-on: ubuntu-latest
@@ -17,25 +26,29 @@ jobs:
     environment: dev
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
-      - name: Validate Bundle
+      - name: Validate DEV Bundle
         working-directory: bundles/jobs
         run: databricks bundle validate -t dev
         env:
-          DATABRICKS_CONFIG_PROFILE: dev
+          DATABRICKS_HOST: ${{ secrets.DEV_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DEV_DATABRICKS_TOKEN }}
 
       - name: Deploy DEV
         working-directory: bundles/jobs
         run: databricks bundle deploy -t dev
         env:
-          DATABRICKS_CONFIG_PROFILE: dev
+          DATABRICKS_HOST: ${{ secrets.DEV_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DEV_DATABRICKS_TOKEN }}
 
   deploy-qa:
+
     if: github.ref == 'refs/heads/qa'
 
     runs-on: ubuntu-latest
@@ -45,19 +58,29 @@ jobs:
     needs: deploy-dev
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
+      - name: Validate QA Bundle
+        working-directory: bundles/jobs
+        run: databricks bundle validate -t qa
+        env:
+          DATABRICKS_HOST: ${{ secrets.QA_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.QA_DATABRICKS_TOKEN }}
+
       - name: Deploy QA
         working-directory: bundles/jobs
         run: databricks bundle deploy -t qa
         env:
-          DATABRICKS_CONFIG_PROFILE: qa
+          DATABRICKS_HOST: ${{ secrets.QA_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.QA_DATABRICKS_TOKEN }}
 
   deploy-prod:
+
     if: github.ref == 'refs/heads/main'
 
     runs-on: ubuntu-latest
@@ -67,14 +90,23 @@ jobs:
     needs: deploy-qa
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout Code
+        uses: actions/checkout@v4
 
       - name: Install Databricks CLI
         run: |
           curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
+      - name: Validate PROD Bundle
+        working-directory: bundles/jobs
+        run: databricks bundle validate -t prod
+        env:
+          DATABRICKS_HOST: ${{ secrets.PROD_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.PROD_DATABRICKS_TOKEN }}
+
       - name: Deploy PROD
         working-directory: bundles/jobs
         run: databricks bundle deploy -t prod
         env:
-          DATABRICKS_CONFIG_PROFILE: prod
+          DATABRICKS_HOST: ${{ secrets.PROD_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.PROD_DATABRICKS_TOKEN }}
