@@ -19,7 +19,7 @@ jobs:
         run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
       - name: Deploy DEV
-        working-directory: bundles/jobs
+        working-directory: .bundles/jobs
         run: databricks bundle deploy -t dev
         env:
           DATABRICKS_HOST: ${{ secrets.DEV_DATABRICKS_HOST }}
@@ -35,7 +35,7 @@ jobs:
         run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
       - name: Deploy QA
-        working-directory: bundles/jobs
+        working-directory: .bundles/jobs
         run: databricks bundle deploy -t qa
         env:
           DATABRICKS_HOST: ${{ secrets.QA_DATABRICKS_HOST }}
@@ -51,7 +51,7 @@ jobs:
         run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
       - name: Deploy PROD
-        working-directory: bundles/jobs
+        working-directory: .bundles/jobs
         run: databricks bundle deploy -t prod
         env:
           DATABRICKS_HOST: ${{ secrets.PROD_DATABRICKS_HOST }}
