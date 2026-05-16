@@ -3,45 +3,20 @@ name: Databricks 3 Environment CI/CD
 on:
   push:
     branches:
-      - dev
-      - qa
       - main
 
 permissions:
   contents: read
 
 jobs:
-
-  detect-env:
-    runs-on: ubuntu-latest
-    outputs:
-      env: ${{ steps.setenv.outputs.env }}
-
-    steps:
-      - name: Set Environment
-        id: setenv
-        run: |
-          if [[ "${GITHUB_REF}" == "refs/heads/dev" ]]; then
-            echo "env=dev" >> $GITHUB_OUTPUT
-          elif [[ "${GITHUB_REF}" == "refs/heads/qa" ]]; then
-            echo "env=qa" >> $GITHUB_OUTPUT
-          elif [[ "${GITHUB_REF}" == "refs/heads/main" ]]; then
-            echo "env=prod" >> $GITHUB_OUTPUT
-          fi
-
   deploy-dev:
-    needs: detect-env
-    if: needs.detect-env.outputs.env == 'dev'
-
     runs-on: ubuntu-latest
-    environment: dev
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Databricks CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      - name: Install CLI
+        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
       - name: Deploy DEV
         working-directory: bundles/jobs
@@ -49,20 +24,15 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.DEV_DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DEV_DATABRICKS_TOKEN }}
-
   deploy-qa:
-    needs: [detect-env, deploy-dev]
-    if: needs.detect-env.outputs.env == 'qa'
-
+    needs: deploy-dev
     runs-on: ubuntu-latest
-    environment: qa
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Databricks CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      - name: Install CLI
+        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
       - name: Deploy QA
         working-directory: bundles/jobs
@@ -70,20 +40,15 @@ jobs:
         env:
           DATABRICKS_HOST: ${{ secrets.QA_DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.QA_DATABRICKS_TOKEN }}
-
   deploy-prod:
-    needs: [detect-env, deploy-qa]
-    if: needs.detect-env.outputs.env == 'prod'
-
+    needs: deploy-qa
     runs-on: ubuntu-latest
-    environment: prod
 
     steps:
       - uses: actions/checkout@v4
 
-      - name: Install Databricks CLI
-        run: |
-          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      - name: Install CLI
+        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
 
       - name: Deploy PROD
         working-directory: bundles/jobs
