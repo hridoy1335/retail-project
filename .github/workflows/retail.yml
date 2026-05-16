@@ -1,58 +1,147 @@
-name: Databricks 3 Environment CI/CD
+name: Databricks Enterprise CI/CD
 
 on:
   push:
     branches:
-      - main
+      - dev
+
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Deploy Environment"
+        required: true
+        default: "prod"
 
 permissions:
+  id-token: write
   contents: read
 
+concurrency:
+  group: databricks-deployment
+  cancel-in-progress: false
+
 jobs:
-  deploy-dev:
+
+  validate:
+    name: Validate Bundle
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-      - name: Install CLI
-        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+      - name: Debug Files
+        run: |
+          pwd
+          find .
 
-      - name: Deploy DEV
-        working-directory: .bundles/jobs
-        run: databricks bundle deploy -t dev
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Validate DEV
+        working-directory: ./bundles/jobs
+        run: |
+          databricks bundle validate -t dev
         env:
           DATABRICKS_HOST: ${{ secrets.DEV_DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.DEV_DATABRICKS_TOKEN }}
-  deploy-qa:
-    needs: deploy-dev
-    runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Install CLI
-        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-
-      - name: Deploy QA
-        working-directory: .bundles/jobs
-        run: databricks bundle deploy -t qa
+      - name: Validate QA
+        working-directory: ./bundles/jobs
+        run: |
+          databricks bundle validate -t qa
         env:
           DATABRICKS_HOST: ${{ secrets.QA_DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.QA_DATABRICKS_TOKEN }}
-  deploy-prod:
-    needs: deploy-qa
+
+  deploy-dev:
+    name: Deploy DEV
+    needs: validate
+
+    if: github.ref == 'refs/heads/dev'
+
     runs-on: ubuntu-latest
 
-    steps:
-      - uses: actions/checkout@v4
+    environment:
+      name: dev
 
-      - name: Install CLI
-        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy DEV
+        working-directory: ./bundles/jobs
+        run: |
+          databricks bundle deploy -t dev
+
+        env:
+          DATABRICKS_HOST: ${{ secrets.DEV_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.DEV_DATABRICKS_TOKEN }}
+
+  deploy-qa:
+    name: Deploy QA
+    needs: deploy-dev
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: qa
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy QA
+        working-directory: ./bundles/jobs
+        run: |
+          databricks bundle deploy -t qa
+
+        env:
+          DATABRICKS_HOST: ${{ secrets.QA_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.QA_DATABRICKS_TOKEN }}
+
+  deploy-prod:
+    name: Deploy PROD
+    needs: validate
+
+    if: github.event_name == 'workflow_dispatch'
+
+    runs-on: ubuntu-latest
+
+    environment:
+      name: prod
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Validate PROD
+        working-directory: ./bundles/jobs
+        run: |
+          databricks bundle validate -t prod
+
+        env:
+          DATABRICKS_HOST: ${{ secrets.PROD_DATABRICKS_HOST }}
+          DATABRICKS_TOKEN: ${{ secrets.PROD_DATABRICKS_TOKEN }}
 
       - name: Deploy PROD
-        working-directory: .bundles/jobs
-        run: databricks bundle deploy -t prod
+        working-directory: ./bundles/jobs
+        run: |
+          databricks bundle deploy -t prod
+
         env:
           DATABRICKS_HOST: ${{ secrets.PROD_DATABRICKS_HOST }}
           DATABRICKS_TOKEN: ${{ secrets.PROD_DATABRICKS_TOKEN }}
