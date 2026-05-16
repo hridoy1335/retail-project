@@ -30,9 +30,10 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Debug Files
+      - name: Debug Repo Structure
         run: |
           pwd
+          ls
           find .
 
       - name: Install Databricks CLI
